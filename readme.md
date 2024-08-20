@@ -131,14 +131,14 @@ lexer := NewLexer(
 ```go
 type Token struct {
     // The token Type
-	Type     TokenType
+    Type     TokenType
     // The literal representation of the token
-	Literal  string
+    Literal  string
     // The parsed value (if available)
     // Currently just for strings and numbers
-	Value    any
+    Value    any
     // The token Position within the source
-	Position Position
+    Position Position
 }
 ```
 
