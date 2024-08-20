@@ -111,9 +111,7 @@ var buildInLiteralTokens []LiteralToken = []LiteralToken{
 	LiteralToken{TypeDollar, "$"},
 	LiteralToken{TypeHash, "#"},
 	LiteralToken{TypeAt, "@"},
-}
 
-var buildInWhitespaceLiteralTokens []LiteralToken = []LiteralToken{
 	LiteralToken{TypeSpace, " "},
 	LiteralToken{TypeTab, "\t"},
 	LiteralToken{TypeNewline, "\n"},

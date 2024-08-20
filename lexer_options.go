@@ -19,7 +19,6 @@ func IgnoreTokens(types ...TokenType) LexerOptionFunc {
 func RetainWhitespace() LexerOptionFunc {
 	return LexerOptionFunc(func(l *Lexer) {
 		l.IgnoreWhitespace = false
-		l.LiteralTokens = SortLiteralTokens(append(l.LiteralTokens, buildInWhitespaceLiteralTokens...))
 	})
 }
 
