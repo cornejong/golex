@@ -99,28 +99,42 @@ for !lexer.ReachedEOF() {
 lexer := NewLexer(
     // Print each token as it is parsed 
     DebugPrintTokens(),
+
+    // Don't add the token position to the token
+    OmitTokenPosition()
+
     // Ignore specific tokens. Tokens will be parsed but lexer.NextToken will be returned
     IgnoreTokens(TypeComment),
+
     // Retain whitespace tokens
     RetainWhitespace(),
+
     // Turn symbols into keyword tokens
     WithKeywords("func", "const", "def"),
+
     // Specify the symbol character maps
     // - arg1: the start character of a symbol
     // - arg2: the continuation of the symbol
     SymbolCharacterMap("a-zA-Z_", "a-zA-Z0-9_"),
+
     // Register a custom tokenizer
     WithTokenizer(InsertBefore(TypeStringTokenizer, TokenizerType("MyCustomTokenizer"), MyCustomTokenizer{})),
+
     // Extend the literal tokens
     WithLiteralTokens(LiteralToken{Type: Type("MyLiteralToken", Literal: "__!__")}),
+
     // unset a build-in literal token
     WithoutLiteralTokens(TypeEllipses, TypeSemicolon),
+
     // Add a comment syntax
     WithCommentSyntax(CommentSyntax{Opener: "#"}, CommentSyntax{Opener: "/*", Closer: "*/"}),
+
     // Unset a build-in comment syntax
     WithoutCommentSyntax(CommentSyntax{Opener: "//"}),
+
     // Add a string enclosure
     WithStringEnclosure(StringEnclosure{Enclosure: "```"}),
+    
     // Unset a build-in enclosure
     WithoutStringEnclosure(StringEnclosure{Enclosure: "\""})
 )
