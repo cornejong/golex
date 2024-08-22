@@ -10,6 +10,12 @@ func DebugPrintTokens() LexerOptionFunc {
 	})
 }
 
+func OmitTokenPosition() LexerOptionFunc {
+	return LexerOptionFunc(func(l *Lexer) {
+		l.OmitTokenPosition = true
+	})
+}
+
 func IgnoreTokens(types ...TokenType) LexerOptionFunc {
 	return LexerOptionFunc(func(l *Lexer) {
 		l.IgnoreTokens = append(l.IgnoreTokens, types...)
