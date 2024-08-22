@@ -117,4 +117,5 @@ var buildInLiteralTokens []LiteralToken = []LiteralToken{
 	LiteralToken{TypeNewline, "\n"},
 	LiteralToken{TypeCarriageReturn, "\r"},
 	LiteralToken{TypeFormFeed, "\f"},
+	LiteralToken{TypeEof, string(EOF)},
 }
