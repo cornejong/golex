@@ -14,7 +14,7 @@ type Diff struct {
 }
 
 func (d Diff) String() string {
-	return fmt.Sprintf("Field: %s\nExpected: %v\nGot: %v\n", d.Field, d.Expect, d.Got)
+	return fmt.Sprintf("Field: %s\nExpected: '%v'\nGot: '%v'\n", d.Field, d.Expect, d.Got)
 }
 
 // Differ is the main diff engine
@@ -107,7 +107,6 @@ func (d *Differ) addDiff(field string, expect, got any) {
 	})
 }
 
-// String returns the string representation of all diffs
 func (d *Differ) String() string {
 	var sb strings.Builder
 	for _, diff := range d.Diffs {
