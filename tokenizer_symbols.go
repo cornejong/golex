@@ -7,10 +7,6 @@ import (
 
 type SymbolTokenizer struct{}
 
-func NewSymbolTokenizer() SymbolTokenizer {
-	return SymbolTokenizer{}
-}
-
 func (s SymbolTokenizer) CanTokenize(l *Lexer) bool {
 	return strings.Contains(l.SymbolStartCharacterMap, string(l.CharAtCursor()))
 }

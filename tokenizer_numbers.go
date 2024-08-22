@@ -7,10 +7,6 @@ import (
 
 type NumberTokenizer struct{}
 
-func NewNumberTokenizer() NumberTokenizer {
-	return NumberTokenizer{}
-}
-
 func (n NumberTokenizer) CanTokenize(l *Lexer) bool {
 	return unicode.IsNumber(l.CharAtCursor()) || (l.CharAtCursor() == '-' && unicode.IsNumber(l.CharAtRelativePosition(1)))
 }

@@ -1,18 +1,33 @@
 package golex
 
-type StringTokenizerCacheKey string
+var (
+	DoubleQuoteStringEnclosure StringEnclosure = StringEnclosure{
+		Type:      TypeDoubleQuoteString,
+		Enclosure: "\"",
+		Escapable: true,
+	}
+	SingleQuoteStringEnclosure StringEnclosure = StringEnclosure{
+		Type:      TypeSingleQuoteString,
+		Enclosure: "'",
+	}
+	BacktickStringEnclosure StringEnclosure = StringEnclosure{
+		Type:      TypeBacktickString,
+		Enclosure: "`",
+	}
+	TripleBacktickStringEnclosure StringEnclosure = StringEnclosure{
+		Type:      TypeTripleBacktickString,
+		Enclosure: "```",
+	}
 
-type StringTokenizer struct {
-}
+	cachedStringEnclosure *StringEnclosure
+)
 
-func NewStringTokenizer() StringTokenizer {
-	return StringTokenizer{}
-}
+type StringTokenizer struct{}
 
 func (s StringTokenizer) CanTokenize(l *Lexer) bool {
 	for _, enclosure := range l.StringEnclosures {
 		if l.NextCharsAre([]rune(enclosure.Enclosure)) {
-			l.state.Cache[StringTokenizerCacheKey("enclosure")] = enclosure
+			cachedStringEnclosure = &enclosure
 			return true
 		}
 	}
@@ -21,10 +36,7 @@ func (s StringTokenizer) CanTokenize(l *Lexer) bool {
 }
 
 func (s StringTokenizer) Tokenize(l *Lexer) Token {
-	var enclosure StringEnclosure
-	if enclosureI, ok := l.state.Cache[StringTokenizerCacheKey("enclosure")]; ok {
-		enclosure = enclosureI.(StringEnclosure)
-	} else {
+	if cachedStringEnclosure == nil {
 		if !s.CanTokenize(l) {
 			return Token{Type: TypeInvalid, Position: l.GetPosition()}
 		} else {
@@ -32,7 +44,10 @@ func (s StringTokenizer) Tokenize(l *Lexer) Token {
 		}
 	}
 
-	return enclosure.Tokenize(l)
+	token := cachedStringEnclosure.Tokenize(l)
+	cachedStringEnclosure = nil
+
+	return token
 }
 
 // ###################################################
@@ -125,23 +140,3 @@ func (se StringEnclosure) TokenizeNotEscapableMultiChar(l *Lexer) Token {
 
 	return token
 }
-
-var (
-	DoubleQuoteStringEnclosure StringEnclosure = StringEnclosure{
-		Type:      TypeDoubleQuoteString,
-		Enclosure: "\"",
-		Escapable: true,
-	}
-	SingleQuoteStringEnclosure StringEnclosure = StringEnclosure{
-		Type:      TypeSingleQuoteString,
-		Enclosure: "'",
-	}
-	BacktickStringEnclosure StringEnclosure = StringEnclosure{
-		Type:      TypeBacktickString,
-		Enclosure: "`",
-	}
-	TripleBacktickStringEnclosure StringEnclosure = StringEnclosure{
-		Type:      TypeTripleBacktickString,
-		Enclosure: "```",
-	}
-)

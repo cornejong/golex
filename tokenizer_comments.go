@@ -4,32 +4,25 @@ var (
 	SlashSingleLineCommentSyntax   = CommentSyntax{Opener: "//"}
 	SlashMultilineCommentSyntax    = CommentSyntax{Opener: "/*", Closer: "*/"}
 	HashtagSingleLineCommentSyntax = CommentSyntax{Opener: "#"}
-)
 
-type CommentTokenizerCacheKey string
+	cachedCommentSyntax *CommentSyntax
+)
 
 type CommentSyntax struct {
 	Opener string
 	Closer string
 }
 
-type CommentTokenizer struct {
-	syntaxes      []CommentSyntax
-	currentSyntax *CommentSyntax
-}
-
-func NewCommentTokenizer() CommentTokenizer {
-	return CommentTokenizer{}
-}
+type CommentTokenizer struct{}
 
 func (c CommentTokenizer) CanTokenize(l *Lexer) bool {
-	if len(c.syntaxes) < 1 {
+	if len(l.CommentSyntaxes) < 1 {
 		return false
 	}
 
 	for _, syntax := range l.CommentSyntaxes {
 		if l.NextCharsAre([]rune(syntax.Opener)) {
-			l.state.Cache[CommentTokenizerCacheKey("currentSyntax")] = syntax
+			cachedCommentSyntax = &syntax
 			return true
 		}
 	}
@@ -38,11 +31,7 @@ func (c CommentTokenizer) CanTokenize(l *Lexer) bool {
 }
 
 func (c CommentTokenizer) Tokenize(l *Lexer) Token {
-	var syntax CommentSyntax
-	if syntaxI, ok := l.state.Cache[CommentTokenizerCacheKey("currentSyntax")]; ok {
-		syntax = syntaxI.(CommentSyntax)
-		delete(l.state.Cache, CommentTokenizerCacheKey("currentSyntax"))
-	} else {
+	if cachedCommentSyntax == nil {
 		if !c.CanTokenize(l) {
 			return Token{Type: TypeInvalid, Position: l.GetPosition()}
 		} else {
@@ -51,13 +40,13 @@ func (c CommentTokenizer) Tokenize(l *Lexer) Token {
 	}
 
 	var reachedEndOfComment func(*Lexer) bool
-	if syntax.Closer == "" {
+	if cachedCommentSyntax.Closer == "" {
 		reachedEndOfComment = func(l *Lexer) bool {
 			return l.CharAtCursor() == '\n'
 		}
 	} else {
 		reachedEndOfComment = func(l *Lexer) bool {
-			return l.NextCharsAre([]rune(syntax.Closer))
+			return l.NextCharsAre([]rune(cachedCommentSyntax.Closer))
 		}
 	}
 
@@ -67,7 +56,9 @@ func (c CommentTokenizer) Tokenize(l *Lexer) Token {
 		l.IncrementCursor(1)
 	}
 
-	l.IncrementCursor(len(c.currentSyntax.Closer))
+	l.IncrementCursor(len(cachedCommentSyntax.Closer))
+
+	cachedCommentSyntax = nil
 
 	if l.IgnoreComments {
 		return l.NextToken()

@@ -4,24 +4,23 @@ import (
 	"slices"
 )
 
+var (
+	cachedLiteralToken *Token
+)
+
 type LiteralTokenizerCacheKey string
 
 type LiteralTokenizer struct{}
-
-func NewLiteralTokenizer() LiteralTokenizer {
-	return LiteralTokenizer{}
-}
 
 func (t LiteralTokenizer) CanTokenize(l *Lexer) bool {
 	pos := l.GetPosition()
 	for _, literal := range l.LiteralTokens {
 		if l.NextCharsAre([]rune(literal.Literal)) {
-			l.state.Cache[LiteralTokenizerCacheKey("bufferedToken")] = Token{
+			cachedLiteralToken = &Token{
 				Type:     literal.Type,
 				Literal:  literal.Literal,
 				Position: pos,
 			}
-
 			return true
 		}
 	}
@@ -30,9 +29,9 @@ func (t LiteralTokenizer) CanTokenize(l *Lexer) bool {
 }
 
 func (t LiteralTokenizer) Tokenize(l *Lexer) Token {
-	if tokenI, ok := l.state.Cache[LiteralTokenizerCacheKey("bufferedToken")]; ok {
-		token := tokenI.(Token)
-		delete(l.state.Cache, LiteralTokenizerCacheKey("bufferedToken"))
+	if cachedLiteralToken != nil {
+		token := *cachedLiteralToken
+		cachedLiteralToken = nil
 		return token
 	}
 

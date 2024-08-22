@@ -2,10 +2,6 @@ package golex
 
 type BooleanTokenizer struct{}
 
-func NewBooleanTokenizer() BooleanTokenizer {
-	return BooleanTokenizer{}
-}
-
 func (b BooleanTokenizer) CanTokenize(l *Lexer) bool {
 	return l.NextCharsAre([]rune("true")) || l.NextCharsAre([]rune("false"))
 }
