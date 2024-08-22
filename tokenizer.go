@@ -1,5 +1,7 @@
 package golex
 
+import "slices"
+
 type TokenizerType string
 
 const (
@@ -29,13 +31,11 @@ func (ti TokenizerInserter) Insert(tokenizers map[TokenizerType]Tokenizer, token
 
 	for i, t := range tokenizationOrder {
 		if t == ti.Before {
-			tokenizationOrder = append(tokenizationOrder[:i], append([]TokenizerType{ti.tokenizerType}, tokenizationOrder[i:]...)...)
-			return tokenizers, tokenizationOrder
+			return tokenizers, slices.Insert(tokenizationOrder, i, ti.tokenizerType)
 		}
 
 		if t == ti.After {
-			tokenizationOrder = append(tokenizationOrder[:i+1], append([]TokenizerType{ti.tokenizerType}, tokenizationOrder[i+1:]...)...)
-			return tokenizers, tokenizationOrder
+			return tokenizers, slices.Insert(tokenizationOrder, i+1, ti.tokenizerType)
 		}
 	}
 
