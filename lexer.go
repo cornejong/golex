@@ -2,6 +2,7 @@ package golex
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"unicode"
 )
@@ -21,18 +22,33 @@ type State struct {
 	Content       []rune
 	ContentLength int
 	Cursor        int
-	Line          int
-	LineStart     int
-	CurrentToken  *Token
-	Cache         map[any]any
+
+	CachedPositionCursor int
+	CachedPosition       Position
+
+	LineIndexes      []int
+	LineIndexesCount int
+	CurrentToken     *Token
+	Cache            map[any]any
 }
 
 func NewState(content string) State {
 	c := []rune(content)
+
+	lineIndexes := []int{}
+	for i, char := range c {
+		if char == '\n' {
+			lineIndexes = append(lineIndexes, i)
+		}
+	}
+
 	return State{
-		Content:       append(c, EOF),
-		ContentLength: len(c),
-		Cache:         make(map[any]any),
+		Content:              append(c, EOF),
+		ContentLength:        len(c),
+		LineIndexes:          lineIndexes,
+		LineIndexesCount:     len(lineIndexes),
+		CachedPositionCursor: 0,
+		CachedPosition:       Position{Col: 1, Row: 1},
 		CurrentToken: &Token{
 			Type:     TypeSof,
 			Position: Position{},
@@ -67,6 +83,7 @@ type Lexer struct {
 	SymbolStartCharacterMap    string
 	SymbolContinueCharacterMap string
 	DebugPrintTokens           bool
+	OmitTokenPosition          bool
 }
 
 func NewLexer(options ...LexerOptionFunc) *Lexer {
@@ -94,27 +111,27 @@ func NewLexer(options ...LexerOptionFunc) *Lexer {
 	}
 
 	// Comment Tokenizer
-	lexer.CommentTokenizer = NewCommentTokenizer()
+	lexer.CommentTokenizer = CommentTokenizer{}
 	lexer.tokenizers[TypeCommentTokenizer] = &lexer.CommentTokenizer
 
 	// Literal tokenizer
-	lexer.LiteralTokenizer = NewLiteralTokenizer()
+	lexer.LiteralTokenizer = LiteralTokenizer{}
 	lexer.tokenizers[TypeLiteralTokenizer] = &lexer.LiteralTokenizer
 
 	// Number tokenizer
-	lexer.NumberTokenizer = NewNumberTokenizer()
+	lexer.NumberTokenizer = NumberTokenizer{}
 	lexer.tokenizers[TypeNumberTokenizer] = &lexer.NumberTokenizer
 
 	// Boolean tokenizer
-	lexer.BooleanTokenizer = NewBooleanTokenizer()
+	lexer.BooleanTokenizer = BooleanTokenizer{}
 	lexer.tokenizers[TypeBooleanTokenizer] = &lexer.BooleanTokenizer
 
 	// String Tokenizer
-	lexer.StringTokenizer = NewStringTokenizer()
+	lexer.StringTokenizer = StringTokenizer{}
 	lexer.tokenizers[TypeStringTokenizer] = &lexer.StringTokenizer
 
 	// Symbol tokenizer
-	lexer.SymbolTokenizer = NewSymbolTokenizer()
+	lexer.SymbolTokenizer = SymbolTokenizer{}
 	lexer.tokenizers[TypeSymbolTokenizer] = &lexer.SymbolTokenizer
 
 	for _, opt := range options {
@@ -165,13 +182,7 @@ func (l *Lexer) TokenizeManual(content string) {
 
 func (l *Lexer) SkipWhitespace() {
 	for !l.CursorIsOutOfBounds() && unicode.IsSpace(l.CharAtCursor()) {
-		char := l.CharAtCursor()
 		l.IncrementCursor(1)
-
-		if char == '\n' {
-			l.state.Line += 1
-			l.state.LineStart = l.state.Cursor
-		}
 	}
 }
 
@@ -209,6 +220,7 @@ func (l *Lexer) nextToken() Token {
 	if l.CursorIsOutOfBounds() {
 		l.state.CurrentToken = &Token{
 			Type:     TypeEof,
+			Literal:  string(EOF),
 			Position: l.GetPosition(),
 		}
 
@@ -238,30 +250,70 @@ func (l *Lexer) nextToken() Token {
 	return token
 }
 
-func (l *Lexer) GetSourceSubsString(start int, end int) string {
-	return string(l.state.Content[start:end])
-}
-
 func (l *Lexer) GetPosition() Position {
-	return Position{Row: l.state.Line + 1, Col: l.state.Cursor - l.state.LineStart + 1}
+	if l.OmitTokenPosition {
+		return Position{}
+	}
+
+	if l.state.Cursor == l.state.CachedPositionCursor {
+		return l.state.CachedPosition
+	}
+
+	// No more new lines to go
+	if l.state.LineIndexesCount == 0 {
+		l.state.CachedPosition.Col += l.state.Cursor - l.state.CachedPositionCursor
+		l.state.CachedPositionCursor = l.state.Cursor
+		return l.state.CachedPosition
+	}
+
+	nextLineStart := l.state.LineIndexes[0]
+	if l.state.Cursor <= nextLineStart {
+		l.state.CachedPosition.Col += l.state.Cursor - l.state.CachedPositionCursor
+		l.state.CachedPositionCursor = l.state.Cursor
+		return l.state.CachedPosition
+	}
+
+	// We have passed a new line
+	l.state.CachedPosition.Row += 1
+	l.state.CachedPosition.Col = l.state.Cursor - nextLineStart
+	l.state.CachedPositionCursor = l.state.Cursor
+
+	// Remove the consumed entry
+	l.state.LineIndexes = l.state.LineIndexes[1:]
+	l.state.LineIndexesCount -= 1
+
+	return l.state.CachedPosition
 }
 
-func (l *Lexer) GetState() State {
-	return l.state
+func (l Lexer) GetCurrentLine() (int, int) {
+	// TODO: remove consumed lines
+	// TODO: this way we can always return the first entry
+
+	lastStart := 0
+	lastIndex := 0
+	for _, start := range l.state.LineIndexes {
+		if start >= l.state.Cursor {
+			return lastIndex, lastStart
+		}
+
+		lastStart = start + 1
+		lastIndex += 1
+	}
+
+	return len(l.state.LineIndexes), lastStart
 }
 
-func (l *Lexer) SetState(state State) {
-	l.state = state
-}
-
+// CharAtCursor returns the rune at the current cursor position
 func (l *Lexer) CharAtCursor() rune {
 	return l.CharAtPosition(l.state.Cursor)
 }
 
+// CharAtRelativePosition returns the rune at the relative position to the cursor
 func (l *Lexer) CharAtRelativePosition(pos int) rune {
 	return l.CharAtPosition(l.state.Cursor + pos)
 }
 
+// CharAtPosition returns the rune at the provided absolute position
 func (l *Lexer) CharAtPosition(pos int) rune {
 	if l.state.ContentLength <= pos {
 		return EOF
@@ -269,6 +321,7 @@ func (l *Lexer) CharAtPosition(pos int) rune {
 	return l.state.Content[pos]
 }
 
+// NextCharsAre checks if the next chars from the cursor on match the provided chars
 func (l *Lexer) NextCharsAre(chars []rune) bool {
 	len := len(chars)
 	if len == 0 {
@@ -288,6 +341,111 @@ func (l *Lexer) NextCharsAre(chars []rune) bool {
 	return true
 }
 
+// ---------------------------------------------------------------
+// Parsing Utilities
+// ---------------------------------------------------------------
+
+func (l *Lexer) CollectTokensBetweenParentheses() (Tokens, int, int, error) {
+	return l.CollectTokensBetween(TypeOpenParen, TypeCloseParen)
+}
+
+func (l *Lexer) CollectTokensBetweenCurlyBraced() (Tokens, int, int, error) {
+	return l.CollectTokensBetween(TypeOpenCurly, TypeCloseCurly)
+}
+
+func (l *Lexer) CollectTokensBetween(open TokenType, close TokenType) (Tokens, int, int, error) {
+	tokens := Tokens{}
+	token := *l.state.CurrentToken
+
+	if !token.Is(open) {
+		return tokens, -1, -1, fmt.Errorf("Current token is not of opener type %s", open)
+	}
+
+	start := l.GetCursor()
+	end := start
+	level := 1
+
+	for !token.Is(TypeEof) {
+		end = l.GetCursor()
+		token = l.NextToken()
+
+		if token.Is(TypeEof) {
+			return tokens, start, end, fmt.Errorf("Unexpected EndOfFile")
+		}
+
+		if token.Is(close) {
+			level -= 1
+			if level == 0 {
+				break
+			}
+		}
+
+		if token.Is(open) {
+			level += 1
+		}
+
+		tokens = append(tokens, token)
+	}
+
+	return tokens, start, end, nil
+}
+
+func (l *Lexer) GetTokensDelimited(tokenType TokenType, delimiter TokenType) (Tokens, error) {
+	tokens := Tokens{}
+
+	token := *l.state.CurrentToken
+	for !token.Is(TypeEof) {
+		if !token.Is(tokenType) {
+			return tokens, fmt.Errorf("expected %s but found %s", tokenType, token.Type)
+		}
+
+		tokens = append(tokens, token)
+
+		if !l.Lookahead(1).Is(delimiter) {
+			break
+		}
+
+		token = l.NextToken() // Just consume the delimiter
+		token = l.NextToken()
+	}
+
+	return tokens, nil
+}
+
+func (l *Lexer) GetAnyTokenDelimited(delimiter TokenType) ([]Token, error) {
+	tokens := []Token{}
+
+	token := *l.state.CurrentToken
+	for !token.Is(TypeEof) {
+		tokens = append(tokens, token)
+
+		if !l.Lookahead(1).Is(delimiter) {
+			break
+		}
+
+		token = l.NextToken() // Just consume the delimiter
+		token = l.NextToken()
+	}
+
+	return tokens, nil
+}
+
+// ---------------------------------------------------------------
+// Helpers / Getter/Setters
+// ---------------------------------------------------------------
+
+func (l *Lexer) GetSourceSubsString(start int, end int) string {
+	return string(l.state.Content[start:end])
+}
+
+func (l *Lexer) GetState() State {
+	return l.state
+}
+
+func (l *Lexer) SetState(state State) {
+	l.state = state
+}
+
 func (l *Lexer) GetCursor() int {
 	return l.state.Cursor
 }
@@ -305,18 +463,4 @@ func (l *Lexer) CursorIsOutOfBounds() bool {
 
 func (l Lexer) ReachedEOF() bool {
 	return l.state.CurrentToken.Type == TypeEof
-}
-
-func (l *Lexer) GetLine() int {
-	return l.state.Line
-}
-func (l *Lexer) SetLine(line int) {
-	l.state.Line = line
-}
-
-func (l *Lexer) GetLineStart() int {
-	return l.state.LineStart
-}
-func (l *Lexer) SetLineStart(lineStart int) {
-	l.state.LineStart = lineStart
 }

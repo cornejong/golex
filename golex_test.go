@@ -23,12 +23,12 @@ var expected []Token = []Token{
 	{Type: TypeAssign, Literal: "=", Position: Position{Row: 1, Col: 54}},
 	{Type: TypeInteger, Literal: "88", Value: 88, Position: Position{Row: 1, Col: 56}},
 	{Type: TypeCloseCurly, Literal: "}", Position: Position{Row: 1, Col: 59}},
-	{Type: TypeEof, Literal: "", Position: Position{Row: 1, Col: 60}},
+	{Type: TypeEof, Literal: string(EOF), Position: Position{Row: 1, Col: 60}},
 }
 
 func getLexer() *Lexer {
 	return NewLexer(
-		DebugPrintTokens(),
+		// DebugPrintTokens(),
 		WithKeywords("fun", "func", "def"),
 	)
 }
@@ -106,6 +106,74 @@ func TestGolexUsageManual(t *testing.T) {
 	}
 }
 
+func TestMultiLinePosition(t *testing.T) {
+	fmt.Println("TestMultiLinePosition...")
+
+	lexer := getLexer()
+	lexer.TokenizeManual("a = true;\nb = false")
+	tokens := []Token{}
+
+	for !lexer.ReachedEOF() {
+		tokens = append(tokens, lexer.NextToken())
+	}
+
+	expect := []Token{
+		{Type: TypeSymbol, Literal: "a", Position: Position{Col: 1, Row: 1}},
+		{Type: TypeAssign, Literal: "=", Position: Position{Col: 3, Row: 1}},
+		{Type: TypeBool, Literal: "true", Value: true, Position: Position{Col: 5, Row: 1}},
+		{Type: TypeSemicolon, Literal: ";", Position: Position{Col: 9, Row: 1}},
+		{Type: TypeSymbol, Literal: "b", Position: Position{Col: 1, Row: 2}},
+		{Type: TypeAssign, Literal: "=", Position: Position{Col: 3, Row: 2}},
+		{Type: TypeBool, Literal: "false", Value: false, Position: Position{Col: 5, Row: 2}},
+		{Type: TypeEof, Literal: string(EOF), Position: Position{Col: 10, Row: 2}},
+	}
+
+	differ := &Differ{}
+	differ.Compare(expect, tokens)
+	if differ.HasDifference() {
+		fmt.Println(differ)
+		fmt.Printf("\n%d differences between expected and result\n", len(differ.Diffs))
+		t.FailNow()
+	}
+}
+
+func TestRetainWhitespace(t *testing.T) {
+	fmt.Println("TestRetainWhitespace...")
+
+	lexer := getLexer()
+	RetainWhitespace()(lexer)
+	lexer.TokenizeManual("a = true;\nb = false")
+	tokens := []Token{}
+
+	for !lexer.ReachedEOF() {
+		tokens = append(tokens, lexer.NextToken())
+	}
+
+	expect := []Token{
+		{Type: TypeSymbol, Literal: "a", Position: Position{Col: 1, Row: 1}},
+		{Type: TypeSpace, Literal: " ", Position: Position{Col: 2, Row: 1}},
+		{Type: TypeAssign, Literal: "=", Position: Position{Col: 3, Row: 1}},
+		{Type: TypeSpace, Literal: " ", Position: Position{Col: 4, Row: 1}},
+		{Type: TypeBool, Literal: "true", Value: true, Position: Position{Col: 5, Row: 1}},
+		{Type: TypeSemicolon, Literal: ";", Position: Position{Col: 9, Row: 1}},
+		{Type: TypeNewline, Literal: "\n", Position: Position{Col: 10, Row: 1}},
+		{Type: TypeSymbol, Literal: "b", Position: Position{Col: 1, Row: 2}},
+		{Type: TypeSpace, Literal: " ", Position: Position{Col: 2, Row: 2}},
+		{Type: TypeAssign, Literal: "=", Position: Position{Col: 3, Row: 2}},
+		{Type: TypeSpace, Literal: " ", Position: Position{Col: 4, Row: 2}},
+		{Type: TypeBool, Literal: "false", Value: false, Position: Position{Col: 5, Row: 2}},
+		{Type: TypeEof, Literal: string(EOF), Position: Position{Col: 10, Row: 2}},
+	}
+
+	differ := &Differ{}
+	differ.Compare(expect, tokens)
+	if differ.HasDifference() {
+		fmt.Println(differ)
+		fmt.Printf("\n%d differences between expected and result\n", len(differ.Diffs))
+		t.FailNow()
+	}
+}
+
 func TestTripleBacktickString(t *testing.T) {
 	fmt.Println("TestTripleBacktickString...")
 
@@ -121,7 +189,7 @@ func TestTripleBacktickString(t *testing.T) {
 
 	expect := []Token{
 		{Type: TypeTripleBacktickString, Literal: "```a string```", Value: "a string", Position: Position{Col: 1, Row: 1}},
-		{Type: TypeEof, Literal: "", Position: Position{Row: 1, Col: 15}},
+		{Type: TypeEof, Literal: string(EOF), Position: Position{Row: 1, Col: 15}},
 	}
 
 	differ := &Differ{}
@@ -152,7 +220,7 @@ func TestBooleanTokenizer(t *testing.T) {
 		{Type: TypeSymbol, Literal: "b", Position: Position{Col: 11, Row: 1}},
 		{Type: TypeAssign, Literal: "=", Position: Position{Col: 13, Row: 1}},
 		{Type: TypeBool, Literal: "false", Value: false, Position: Position{Col: 15, Row: 1}},
-		{Type: TypeEof, Literal: "", Position: Position{Col: 20, Row: 1}},
+		{Type: TypeEof, Literal: string(EOF), Position: Position{Col: 20, Row: 1}},
 	}
 
 	differ := &Differ{}
@@ -193,7 +261,7 @@ func TestTokenizationInsertOrderBefore(t *testing.T) {
 		TypeStringTokenizer,
 	}
 
-	insert := InsertBefore(TypeNumberTokenizer, TypeSymbolTokenizer, NewSymbolTokenizer())
+	insert := InsertBefore(TypeNumberTokenizer, TypeSymbolTokenizer, SymbolTokenizer{})
 	_, newOrder := insert.Insert(tokenizers, order)
 
 	expectOrder := []TokenizerType{
@@ -225,7 +293,7 @@ func TestTokenizationInsertOrderAfter(t *testing.T) {
 		TypeStringTokenizer,
 	}
 
-	insert := InsertAfter(TypeNumberTokenizer, TypeSymbolTokenizer, NewSymbolTokenizer())
+	insert := InsertAfter(TypeNumberTokenizer, TypeSymbolTokenizer, SymbolTokenizer{})
 	_, newOrder := insert.Insert(tokenizers, order)
 
 	expectOrder := []TokenizerType{
