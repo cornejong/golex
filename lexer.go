@@ -259,7 +259,6 @@ func (l *Lexer) GetPosition() Position {
 		return l.state.CachedPosition
 	}
 
-	// No more new lines to go
 	if l.state.LineIndexesCount == 0 {
 		l.state.CachedPosition.Col += l.state.Cursor - l.state.CachedPositionCursor
 		l.state.CachedPositionCursor = l.state.Cursor
@@ -273,7 +272,6 @@ func (l *Lexer) GetPosition() Position {
 		return l.state.CachedPosition
 	}
 
-	// We have passed a new line
 	l.state.CachedPosition.Row += 1
 	l.state.CachedPosition.Col = l.state.Cursor - nextLineStart
 	l.state.CachedPositionCursor = l.state.Cursor
@@ -349,7 +347,7 @@ func (l *Lexer) CollectTokensBetweenParentheses() (Tokens, int, int, error) {
 	return l.CollectTokensBetween(TypeOpenParen, TypeCloseParen)
 }
 
-func (l *Lexer) CollectTokensBetweenCurlyBraced() (Tokens, int, int, error) {
+func (l *Lexer) CollectTokensBetweenCurlyBraces() (Tokens, int, int, error) {
 	return l.CollectTokensBetween(TypeOpenCurly, TypeCloseCurly)
 }
 

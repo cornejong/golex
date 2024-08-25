@@ -101,7 +101,7 @@ lexer := NewLexer(
     DebugPrintTokens(),
 
     // Don't add the token position to the token
-    OmitTokenPosition()
+    OmitTokenPosition(),
 
     // Ignore specific tokens. Tokens will be parsed but lexer.NextToken will be returned
     IgnoreTokens(TypeComment),
@@ -149,7 +149,7 @@ type Token struct {
     // The literal representation of the token
     Literal  string
     // The parsed value (if available)
-    // Currently just for strings and numbers
+    // Currently just for strings, numbers and booleans
     Value    any
     // The token Position within the source
     Position Position
@@ -159,3 +159,4 @@ type Token struct {
 ## Build-in Types
 All basic token types are build-in and can be unset or extended using the lexer options.
 For a full list of build-in types check [build_in_types.go](build_in_types.go)
+

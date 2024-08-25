@@ -2,6 +2,9 @@ package golex
 
 import "fmt"
 
+// ###################################################
+// #                    Token
+// ###################################################
 type Token struct {
 	Type     TokenType
 	Literal  string
@@ -19,4 +22,23 @@ func (t Token) Dump() {
 
 func (t Token) Is(tt TokenType) bool {
 	return t.Type == tt
+}
+
+// ###################################################
+// #                   TokenType
+// ###################################################
+type TokenType interface {
+	String() string
+}
+
+// ###################################################
+// #                   Position
+// ###################################################
+type Position struct {
+	Row int
+	Col int
+}
+
+func (p Position) String() string {
+	return fmt.Sprintf("%3d:%4d", p.Row, p.Col)
 }
