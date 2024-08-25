@@ -232,6 +232,54 @@ func TestBooleanTokenizer(t *testing.T) {
 	}
 }
 
+func TestLexerLookaheadCache(t *testing.T) {
+	fmt.Println("TestLexerLookaheadCache...")
+
+	lexer := getLexer()
+	lexer.TokenizeManual(source)
+
+	lexer.Lookahead(2)
+	fmt.Println("in cache:")
+	for _, t := range lexer.state.LookaheadCache.tokens {
+		t.Dump()
+	}
+
+	if lexer.state.LookaheadCache.count != 2 {
+		t.Errorf("Expected the lookahead cache to contain 2 items. %d items were found.", lexer.state.LookaheadCache.count)
+	}
+
+	fmt.Println("Gotten token:")
+	lexer.NextToken().Dump()
+
+	if lexer.state.LookaheadCache.count != 1 {
+		t.Errorf("Expected the lookahead cache to contain 1 item. %d items were found.", lexer.state.LookaheadCache.count)
+	}
+
+	lexer.Lookahead(2)
+	fmt.Println("in cache:")
+	for _, t := range lexer.state.LookaheadCache.tokens {
+		t.Dump()
+	}
+
+	if lexer.state.LookaheadCache.count != 2 {
+		t.Errorf("Expected the lookahead cache to contain 2 items. %d items were found.", lexer.state.LookaheadCache.count)
+	}
+
+	fmt.Println("Gotten token:")
+	lexer.NextToken().Dump()
+
+	if lexer.state.LookaheadCache.count != 1 {
+		t.Errorf("Expected the lookahead cache to contain 1 item. %d items were found.", lexer.state.LookaheadCache.count)
+	}
+
+	fmt.Println("Gotten token:")
+	lexer.NextToken().Dump()
+
+	if lexer.state.LookaheadCache.count != 0 {
+		t.Errorf("Expected the lookahead cache to contain 0 items. %d items were found.", lexer.state.LookaheadCache.count)
+	}
+}
+
 // ###################################################
 // #              Test Individual Stuff
 // ###################################################

@@ -3,6 +3,7 @@ package golex
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -29,7 +30,35 @@ type State struct {
 	LineIndexes      []int
 	LineIndexesCount int
 	CurrentToken     *Token
-	Cache            map[any]any
+	LookaheadCache   LookaheadCache
+}
+
+type LookaheadCache struct {
+	tokens []Token
+	count  int
+}
+
+func (lc *LookaheadCache) ContainsItems() bool { return lc.count > 0 }
+
+func (lc *LookaheadCache) AddItem(token Token) bool {
+	if slices.Contains(lc.tokens, token) {
+		return false // We already cached this token
+	}
+
+	lc.tokens = append(lc.tokens, token)
+	lc.count += 1
+	return true
+}
+
+// TODO: this does not check for out of bounds stuff..
+// TODO: Probably not what we want to do...
+func (lc *LookaheadCache) PluckItem() Token {
+	token := lc.tokens[0]
+
+	lc.tokens = lc.tokens[1:]
+	lc.count -= 1
+
+	return token
 }
 
 func NewState(content string) State {
@@ -192,6 +221,8 @@ func (l *Lexer) Lookahead(count int) Token {
 	var token Token
 	for i := 0; i < count; i++ {
 		token = l.nextToken()
+		state.LookaheadCache.AddItem(token)
+
 		if strings.ContainsRune(token.Literal, EOF) {
 			l.SetState(state)
 			return token
@@ -213,6 +244,11 @@ func (l *Lexer) NextToken() Token {
 }
 
 func (l *Lexer) nextToken() Token {
+	// check if we have anything in the lookahead cache
+	if l.state.LookaheadCache.ContainsItems() {
+		return l.state.LookaheadCache.PluckItem()
+	}
+
 	if l.IgnoreWhitespace {
 		l.SkipWhitespace()
 	}
