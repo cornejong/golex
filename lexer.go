@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 	"unicode"
 )
 
@@ -39,6 +38,7 @@ type LookaheadCache struct {
 }
 
 func (lc *LookaheadCache) ContainsItems() bool { return lc.count > 0 }
+func (lc *LookaheadCache) ItemCount() int      { return lc.count }
 
 func (lc *LookaheadCache) AddItem(token Token) bool {
 	if slices.Contains(lc.tokens, token) {
@@ -59,6 +59,14 @@ func (lc *LookaheadCache) PluckItem() Token {
 	lc.count -= 1
 
 	return token
+}
+
+func (lc *LookaheadCache) GetFirstItem() Token {
+	return lc.tokens[0]
+}
+
+func (lc *LookaheadCache) GetItem(pos int) Token {
+	return lc.tokens[pos]
 }
 
 func NewState(content string) State {
@@ -216,14 +224,18 @@ func (l *Lexer) SkipWhitespace() {
 }
 
 func (l *Lexer) Lookahead(count int) Token {
-	state := l.GetState()
+	if l.state.LookaheadCache.ItemCount() >= count {
+		return l.state.LookaheadCache.GetItem(count - 1)
+	}
 
+	state := l.GetState()
 	var token Token
+
 	for i := 0; i < count; i++ {
 		token = l.nextToken()
 		state.LookaheadCache.AddItem(token)
 
-		if strings.ContainsRune(token.Literal, EOF) {
+		if token.Is(TypeEof) {
 			l.SetState(state)
 			return token
 		}
