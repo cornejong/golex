@@ -6,7 +6,7 @@ import (
 )
 
 // LexerError represents an error that occurred during lexical analysis.
-type LexerError struct {
+type Error struct {
 	Message  string
 	Position Position
 	Cursor   int
@@ -14,14 +14,13 @@ type LexerError struct {
 }
 
 // Error implements the error interface for LexerError
-func (e *LexerError) Error() string {
-	return fmt.Sprintf("Lexer error at line %d, column %d: %s\n%s", e.Position.Row, e.Position.Col, e.Message, e.formatSnippet())
+func (e *Error) Error() string {
+	return fmt.Sprintf("%s: %s\n%s", e.Position.String(), e.Message, e.formatSnippet())
 }
 
-// Utility to create a new LexerError with a snippet from the input.
-func NewLexerError(message string, position Position, cursor int, input []rune) *LexerError {
+func NewError(message string, position Position, cursor int, input []rune) *Error {
 	snippet := extractSnippet(input, cursor)
-	return &LexerError{
+	return &Error{
 		Message:  message,
 		Position: position,
 		Cursor:   cursor,
@@ -29,7 +28,6 @@ func NewLexerError(message string, position Position, cursor int, input []rune) 
 	}
 }
 
-// Extracts a snippet of the input around the error position for better context
 func extractSnippet(input []rune, cursor int) string {
 	const contextLength = 20
 	start := cursor - contextLength
@@ -44,7 +42,7 @@ func extractSnippet(input []rune, cursor int) string {
 }
 
 // Formats the snippet with a caret (^) to indicate the exact error location.
-func (e *LexerError) formatSnippet() string {
+func (e *Error) formatSnippet() string {
 	caretPosition := strings.Repeat(" ", e.Position.Col-1) + "^"
 	return fmt.Sprintf("    %s\n    %s", e.Snippet, caretPosition)
 }

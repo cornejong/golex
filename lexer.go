@@ -1,7 +1,7 @@
 package golex
 
 import (
-	"errors"
+	"fmt"
 	"iter"
 	"slices"
 	"unicode"
@@ -13,9 +13,6 @@ var (
 	// defaultSymbolCharacterMap         string = "a-zA-Z0-9_"
 	defaultSymbolContinueCharacterMapExpanded string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
 	defaultSymbolStartCharacterMapExpanded    string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
-
-	ErrNoEOFTokenType     error = errors.New("no eof token type specified. Specify an EOF token type or use build-in types")
-	ErrNoInvalidTokenType error = errors.New("no eof token type specified. Specify an EOF token type or use build-in types")
 )
 
 type State struct {
@@ -290,6 +287,7 @@ func (l *Lexer) nextToken() (Token, error) {
 	var err error
 	token := Token{
 		Type:     TypeInvalid,
+		Literal:  string(l.CharAtCursor()),
 		Position: l.GetPosition(),
 	}
 
@@ -307,6 +305,10 @@ func (l *Lexer) nextToken() (Token, error) {
 
 	l.state.CurrentToken = &token
 	l.IncrementCursor(1)
+
+	if token.TypeIs(TypeInvalid) && err == nil {
+		err = NewError(fmt.Sprintf("Invalid character '%c'", l.CharAtCursor()), token.Position, l.state.Cursor, l.state.Content)
+	}
 
 	return token, err
 }
