@@ -79,8 +79,9 @@ type TokenType interface {
 // #                   Position
 // ###################################################
 type Position struct {
-	Row int
-	Col int
+	Row    int
+	Col    int
+	Cursor int
 }
 
 func (p Position) String() string {

@@ -41,7 +41,7 @@ func (s StringTokenizer) Tokenize(l *Lexer) (Token, error) {
 	if cachedStringEnclosure == nil {
 		if !s.CanTokenize(l) {
 			return Token{Type: TypeInvalid, Position: l.GetPosition()},
-				NewError(fmt.Sprintf("Invalid character '%c' found", l.CharAtCursor()), l.GetPosition(), l.GetCursor(), l.state.Content)
+				NewError(fmt.Sprintf("Invalid character '%c' found", l.CharAtCursor()), l.GetPosition(), l.state.Content)
 		} else {
 			return s.Tokenize(l)
 		}
@@ -97,7 +97,7 @@ func (se StringEnclosure) TokenizeEscapable(l *Lexer) (Token, error) {
 		l.IncrementCursor(1)
 
 		if l.CharAtCursor() == EOF {
-			return token, NewError("Unterminated string literal", token.Position, start, l.state.Content)
+			return token, NewError("Unterminated string literal", token.Position, l.state.Content)
 		}
 	}
 
@@ -121,7 +121,7 @@ func (se StringEnclosure) TokenizeNotEscapableSingleChar(l *Lexer) (Token, error
 		l.IncrementCursor(1)
 
 		if l.CharAtCursor() == EOF {
-			return token, NewError("Unterminated string literal", token.Position, start, l.state.Content)
+			return token, NewError("Unterminated string literal", token.Position, l.state.Content)
 		}
 	}
 
@@ -144,7 +144,7 @@ func (se StringEnclosure) TokenizeNotEscapableMultiChar(l *Lexer) (Token, error)
 		l.IncrementCursor(1)
 
 		if l.CharAtCursor() == EOF {
-			return token, NewError("Unterminated string literal", token.Position, start, l.state.Content)
+			return token, NewError("Unterminated string literal", token.Position, l.state.Content)
 		}
 	}
 

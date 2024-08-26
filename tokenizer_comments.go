@@ -36,7 +36,7 @@ func (c CommentTokenizer) Tokenize(l *Lexer) (Token, error) {
 	if cachedCommentSyntax == nil {
 		if !c.CanTokenize(l) {
 			return Token{Type: TypeInvalid, Position: l.GetPosition()},
-				NewError(fmt.Sprintf("Invalid token '%c' found", l.CharAtCursor()), l.GetPosition(), l.GetCursor(), l.state.Content)
+				NewError(fmt.Sprintf("Invalid token '%c' found", l.CharAtCursor()), l.GetPosition(), l.state.Content)
 		} else {
 			return c.Tokenize(l)
 		}

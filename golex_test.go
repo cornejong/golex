@@ -7,23 +7,23 @@ import (
 
 var source string = " func() { test = \"SomeStringValue\"; test = 1.2; test = 88 }"
 var expected []Token = []Token{
-	{Type: TypeKeyword, Literal: "func", Position: Position{Row: 1, Col: 2}},
-	{Type: TypeOpenParen, Literal: "(", Position: Position{Row: 1, Col: 6}},
-	{Type: TypeCloseParen, Literal: ")", Position: Position{Row: 1, Col: 7}},
-	{Type: TypeOpenCurly, Literal: "{", Position: Position{Row: 1, Col: 9}},
-	{Type: TypeSymbol, Literal: "test", Position: Position{Row: 1, Col: 11}},
-	{Type: TypeAssign, Literal: "=", Position: Position{Row: 1, Col: 16}},
-	{Type: TypeDoubleQuoteString, Literal: "\"SomeStringValue\"", Value: "SomeStringValue", Position: Position{Row: 1, Col: 18}},
-	{Type: TypeSemicolon, Literal: ";", Position: Position{Row: 1, Col: 35}},
-	{Type: TypeSymbol, Literal: "test", Position: Position{Row: 1, Col: 37}},
-	{Type: TypeAssign, Literal: "=", Position: Position{Row: 1, Col: 42}},
-	{Type: TypeFloat, Literal: "1.2", Value: 1.2, Position: Position{Row: 1, Col: 44}},
-	{Type: TypeSemicolon, Literal: ";", Position: Position{Row: 1, Col: 47}},
-	{Type: TypeSymbol, Literal: "test", Position: Position{Row: 1, Col: 49}},
-	{Type: TypeAssign, Literal: "=", Position: Position{Row: 1, Col: 54}},
-	{Type: TypeInteger, Literal: "88", Value: 88, Position: Position{Row: 1, Col: 56}},
-	{Type: TypeCloseCurly, Literal: "}", Position: Position{Row: 1, Col: 59}},
-	{Type: TypeEof, Literal: string(EOF), Position: Position{Row: 1, Col: 60}},
+	{Type: TypeKeyword, Literal: "func", Position: Position{Row: 1, Col: 2, Cursor: 1}},
+	{Type: TypeOpenParen, Literal: "(", Position: Position{Row: 1, Col: 6, Cursor: 5}},
+	{Type: TypeCloseParen, Literal: ")", Position: Position{Row: 1, Col: 7, Cursor: 6}},
+	{Type: TypeOpenCurly, Literal: "{", Position: Position{Row: 1, Col: 9, Cursor: 8}},
+	{Type: TypeSymbol, Literal: "test", Position: Position{Row: 1, Col: 11, Cursor: 10}},
+	{Type: TypeAssign, Literal: "=", Position: Position{Row: 1, Col: 16, Cursor: 15}},
+	{Type: TypeDoubleQuoteString, Literal: "\"SomeStringValue\"", Value: "SomeStringValue", Position: Position{Row: 1, Col: 18, Cursor: 17}},
+	{Type: TypeSemicolon, Literal: ";", Position: Position{Row: 1, Col: 35, Cursor: 34}},
+	{Type: TypeSymbol, Literal: "test", Position: Position{Row: 1, Col: 37, Cursor: 36}},
+	{Type: TypeAssign, Literal: "=", Position: Position{Row: 1, Col: 42, Cursor: 41}},
+	{Type: TypeFloat, Literal: "1.2", Value: 1.2, Position: Position{Row: 1, Col: 44, Cursor: 43}},
+	{Type: TypeSemicolon, Literal: ";", Position: Position{Row: 1, Col: 47, Cursor: 46}},
+	{Type: TypeSymbol, Literal: "test", Position: Position{Row: 1, Col: 49, Cursor: 48}},
+	{Type: TypeAssign, Literal: "=", Position: Position{Row: 1, Col: 54, Cursor: 53}},
+	{Type: TypeInteger, Literal: "88", Value: 88, Position: Position{Row: 1, Col: 56, Cursor: 55}},
+	{Type: TypeCloseCurly, Literal: "}", Position: Position{Row: 1, Col: 59, Cursor: 58}},
+	{Type: TypeEof, Literal: string(EOF), Position: Position{Row: 1, Col: 60, Cursor: 59}},
 }
 
 func getLexer() *Lexer {
@@ -99,14 +99,14 @@ func TestMultiLinePosition(t *testing.T) {
 	}
 
 	expect := []Token{
-		{Type: TypeSymbol, Literal: "a", Position: Position{Col: 1, Row: 1}},
-		{Type: TypeAssign, Literal: "=", Position: Position{Col: 3, Row: 1}},
-		{Type: TypeBool, Literal: "true", Value: true, Position: Position{Col: 5, Row: 1}},
-		{Type: TypeSemicolon, Literal: ";", Position: Position{Col: 9, Row: 1}},
-		{Type: TypeSymbol, Literal: "b", Position: Position{Col: 1, Row: 2}},
-		{Type: TypeAssign, Literal: "=", Position: Position{Col: 3, Row: 2}},
-		{Type: TypeBool, Literal: "false", Value: false, Position: Position{Col: 5, Row: 2}},
-		{Type: TypeEof, Literal: string(EOF), Position: Position{Col: 10, Row: 2}},
+		{Type: TypeSymbol, Literal: "a", Position: Position{Col: 1, Row: 1, Cursor: 0}},
+		{Type: TypeAssign, Literal: "=", Position: Position{Col: 3, Row: 1, Cursor: 2}},
+		{Type: TypeBool, Literal: "true", Value: true, Position: Position{Col: 5, Row: 1, Cursor: 4}},
+		{Type: TypeSemicolon, Literal: ";", Position: Position{Col: 9, Row: 1, Cursor: 8}},
+		{Type: TypeSymbol, Literal: "b", Position: Position{Col: 1, Row: 2, Cursor: 10}},
+		{Type: TypeAssign, Literal: "=", Position: Position{Col: 3, Row: 2, Cursor: 12}},
+		{Type: TypeBool, Literal: "false", Value: false, Position: Position{Col: 5, Row: 2, Cursor: 14}},
+		{Type: TypeEof, Literal: string(EOF), Position: Position{Col: 10, Row: 2, Cursor: 19}},
 	}
 
 	differ := &Differ{}
@@ -134,19 +134,19 @@ func TestRetainWhitespace(t *testing.T) {
 	}
 
 	expect := []Token{
-		{Type: TypeSymbol, Literal: "a", Position: Position{Col: 1, Row: 1}},
-		{Type: TypeSpace, Literal: " ", Position: Position{Col: 2, Row: 1}},
-		{Type: TypeAssign, Literal: "=", Position: Position{Col: 3, Row: 1}},
-		{Type: TypeSpace, Literal: " ", Position: Position{Col: 4, Row: 1}},
-		{Type: TypeBool, Literal: "true", Value: true, Position: Position{Col: 5, Row: 1}},
-		{Type: TypeSemicolon, Literal: ";", Position: Position{Col: 9, Row: 1}},
-		{Type: TypeNewline, Literal: "\n", Position: Position{Col: 10, Row: 1}},
-		{Type: TypeSymbol, Literal: "b", Position: Position{Col: 1, Row: 2}},
-		{Type: TypeSpace, Literal: " ", Position: Position{Col: 2, Row: 2}},
-		{Type: TypeAssign, Literal: "=", Position: Position{Col: 3, Row: 2}},
-		{Type: TypeSpace, Literal: " ", Position: Position{Col: 4, Row: 2}},
-		{Type: TypeBool, Literal: "false", Value: false, Position: Position{Col: 5, Row: 2}},
-		{Type: TypeEof, Literal: string(EOF), Position: Position{Col: 10, Row: 2}},
+		{Type: TypeSymbol, Literal: "a", Position: Position{Col: 1, Row: 1, Cursor: 0}},
+		{Type: TypeSpace, Literal: " ", Position: Position{Col: 2, Row: 1, Cursor: 1}},
+		{Type: TypeAssign, Literal: "=", Position: Position{Col: 3, Row: 1, Cursor: 2}},
+		{Type: TypeSpace, Literal: " ", Position: Position{Col: 4, Row: 1, Cursor: 3}},
+		{Type: TypeBool, Literal: "true", Value: true, Position: Position{Col: 5, Row: 1, Cursor: 4}},
+		{Type: TypeSemicolon, Literal: ";", Position: Position{Col: 9, Row: 1, Cursor: 8}},
+		{Type: TypeNewline, Literal: "\n", Position: Position{Col: 10, Row: 1, Cursor: 9}},
+		{Type: TypeSymbol, Literal: "b", Position: Position{Col: 1, Row: 2, Cursor: 10}},
+		{Type: TypeSpace, Literal: " ", Position: Position{Col: 2, Row: 2, Cursor: 11}},
+		{Type: TypeAssign, Literal: "=", Position: Position{Col: 3, Row: 2, Cursor: 12}},
+		{Type: TypeSpace, Literal: " ", Position: Position{Col: 4, Row: 2, Cursor: 13}},
+		{Type: TypeBool, Literal: "false", Value: false, Position: Position{Col: 5, Row: 2, Cursor: 14}},
+		{Type: TypeEof, Literal: string(EOF), Position: Position{Col: 10, Row: 2, Cursor: 19}},
 	}
 
 	differ := &Differ{}
@@ -174,8 +174,8 @@ func TestTripleBacktickString(t *testing.T) {
 	}
 
 	expect := []Token{
-		{Type: TypeTripleBacktickString, Literal: "```a string```", Value: "a string", Position: Position{Col: 1, Row: 1}},
-		{Type: TypeEof, Literal: string(EOF), Position: Position{Row: 1, Col: 15}},
+		{Type: TypeTripleBacktickString, Literal: "```a string```", Value: "a string", Position: Position{Col: 1, Row: 1, Cursor: 0}},
+		{Type: TypeEof, Literal: string(EOF), Position: Position{Row: 1, Col: 15, Cursor: 14}},
 	}
 
 	differ := &Differ{}
@@ -248,22 +248,8 @@ func TestLexerIterateTokensBetween(t *testing.T) {
 				tokens = append(tokens, token)
 			}
 
-			expect := []Token{
-				{Type: TypeSymbol, Literal: "test", Position: Position{Row: 1, Col: 11}},
-				{Type: TypeAssign, Literal: "=", Position: Position{Row: 1, Col: 16}},
-				{Type: TypeDoubleQuoteString, Literal: "\"SomeStringValue\"", Value: "SomeStringValue", Position: Position{Row: 1, Col: 18}},
-				{Type: TypeSemicolon, Literal: ";", Position: Position{Row: 1, Col: 35}},
-				{Type: TypeSymbol, Literal: "test", Position: Position{Row: 1, Col: 37}},
-				{Type: TypeAssign, Literal: "=", Position: Position{Row: 1, Col: 42}},
-				{Type: TypeFloat, Literal: "1.2", Value: 1.2, Position: Position{Row: 1, Col: 44}},
-				{Type: TypeSemicolon, Literal: ";", Position: Position{Row: 1, Col: 47}},
-				{Type: TypeSymbol, Literal: "test", Position: Position{Row: 1, Col: 49}},
-				{Type: TypeAssign, Literal: "=", Position: Position{Row: 1, Col: 54}},
-				{Type: TypeInteger, Literal: "88", Value: 88, Position: Position{Row: 1, Col: 56}},
-			}
-
 			differ := &Differ{}
-			differ.Compare(expect, tokens)
+			differ.Compare(expected[4:15], tokens)
 			if differ.HasDifference() {
 				fmt.Println(differ)
 				fmt.Printf("\n%d differences between expected and result\n", len(differ.Diffs))
@@ -294,16 +280,10 @@ func TestLookaheadIterator(t *testing.T) {
 		tokens = append(tokens, token)
 	}
 
-	expect := []Token{
-		{Type: TypeKeyword, Literal: "func", Position: Position{Row: 1, Col: 2}},
-		{Type: TypeOpenParen, Literal: "(", Position: Position{Row: 1, Col: 6}},
-		{Type: TypeCloseParen, Literal: ")", Position: Position{Row: 1, Col: 7}},
-	}
-
 	differ := &Differ{}
-	differ.Compare(expect, tokens)
+	differ.Compare(expected[:3], tokens)
 	if differ.HasDifference() {
-		// fmt.Println(differ)
+		fmt.Println(differ)
 		fmt.Printf("\n%d differences between expected and result\n", len(differ.Diffs))
 		t.FailNow()
 	}

@@ -27,5 +27,5 @@ func (b BooleanTokenizer) Tokenize(l *Lexer) (Token, error) {
 	token.Type = TypeInvalid
 	token.Literal = string(l.CharAtCursor())
 
-	return token, NewError("Untokenizable boolean", token.Position, l.GetCursor(), l.state.Content)
+	return token, NewError("Untokenizable boolean", token.Position, l.state.Content)
 }

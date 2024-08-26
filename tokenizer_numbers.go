@@ -15,7 +15,6 @@ func (n NumberTokenizer) CanTokenize(l *Lexer) bool {
 
 func (n NumberTokenizer) Tokenize(l *Lexer) (Token, error) {
 	token := Token{Type: TypeInteger, Position: l.GetPosition()}
-	start := l.GetCursor()
 
 	token.AppendChar(l.CharAtCursor())
 	l.IncrementCursor(1)
@@ -33,12 +32,12 @@ func (n NumberTokenizer) Tokenize(l *Lexer) (Token, error) {
 
 	if token.Type == TypeFloat {
 		if strings.HasSuffix(token.Literal, ".") {
-			return token, NewError(fmt.Sprintf("Malformed float '%s'. Missing Decimal places.", token.Literal), token.Position, start, l.state.Content)
+			return token, NewError(fmt.Sprintf("Malformed float '%s'. Missing Decimal places.", token.Literal), token.Position, l.state.Content)
 		}
 
 		decimalSeparatorCount := strings.Count(token.Literal, ".")
 		if decimalSeparatorCount > 1 {
-			return token, NewError(fmt.Sprintf("Malformed float '%s'. To many decimal separators. Expect 1 but got %d", token.Literal, decimalSeparatorCount), token.Position, start, l.state.Content)
+			return token, NewError(fmt.Sprintf("Malformed float '%s'. To many decimal separators. Expect 1 but got %d", token.Literal, decimalSeparatorCount), token.Position, l.state.Content)
 		}
 
 		// TODO: Make a lexer option to enable number parsing errors

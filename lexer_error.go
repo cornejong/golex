@@ -9,7 +9,6 @@ import (
 type Error struct {
 	Message  string
 	Position Position
-	Cursor   int
 	Snippet  string
 }
 
@@ -18,14 +17,19 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", e.Position.String(), e.Message, e.formatSnippet())
 }
 
-func NewError(message string, position Position, cursor int, input []rune) *Error {
-	snippet := extractSnippet(input, cursor)
+func NewError(message string, position Position, input []rune) *Error {
+	snippet := extractSnippet(input, position.Cursor)
 	return &Error{
 		Message:  message,
 		Position: position,
-		Cursor:   cursor,
 		Snippet:  snippet,
 	}
+}
+
+// Formats the snippet with a caret (^) to indicate the exact error location.
+func (e *Error) formatSnippet() string {
+	caretPosition := strings.Repeat(" ", e.Position.Col-1) + "^"
+	return fmt.Sprintf("    %s\n    %s", e.Snippet, caretPosition)
 }
 
 func extractSnippet(input []rune, cursor int) string {
@@ -39,10 +43,4 @@ func extractSnippet(input []rune, cursor int) string {
 		end = len(input)
 	}
 	return string(input[start:end])
-}
-
-// Formats the snippet with a caret (^) to indicate the exact error location.
-func (e *Error) formatSnippet() string {
-	caretPosition := strings.Repeat(" ", e.Position.Col-1) + "^"
-	return fmt.Sprintf("    %s\n    %s", e.Snippet, caretPosition)
 }

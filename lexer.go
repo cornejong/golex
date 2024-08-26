@@ -20,8 +20,8 @@ type State struct {
 	ContentLength int
 	Cursor        int
 
-	CachedPositionCursor int
-	CachedPosition       Position
+	PositionCursor int
+	Position       Position
 
 	LineIndexes      []int
 	LineIndexesCount int
@@ -77,12 +77,12 @@ func NewState(content string) State {
 	}
 
 	return State{
-		Content:              append(c, EOF),
-		ContentLength:        len(c),
-		LineIndexes:          lineIndexes,
-		LineIndexesCount:     len(lineIndexes),
-		CachedPositionCursor: 0,
-		CachedPosition:       Position{Col: 1, Row: 1},
+		Content:          append(c, EOF),
+		ContentLength:    len(c),
+		LineIndexes:      lineIndexes,
+		LineIndexesCount: len(lineIndexes),
+		PositionCursor:   0,
+		Position:         Position{Col: 1, Row: 1, Cursor: 0},
 		CurrentToken: &Token{
 			Type:     TypeSof,
 			Position: Position{},
@@ -307,7 +307,7 @@ func (l *Lexer) nextToken() (Token, error) {
 	l.IncrementCursor(1)
 
 	if token.TypeIs(TypeInvalid) && err == nil {
-		err = NewError(fmt.Sprintf("Invalid character '%c'", l.CharAtCursor()), token.Position, l.state.Cursor, l.state.Content)
+		err = NewError(fmt.Sprintf("Invalid character '%c'", l.CharAtCursor()), token.Position, l.state.Content)
 	}
 
 	return token, err
@@ -318,32 +318,34 @@ func (l *Lexer) GetPosition() Position {
 		return Position{}
 	}
 
-	if l.state.Cursor == l.state.CachedPositionCursor {
-		return l.state.CachedPosition
+	if l.state.Cursor == l.state.Position.Cursor {
+		return l.state.Position
 	}
 
+	l.state.Position.Cursor = l.state.Cursor
+
 	if l.state.LineIndexesCount == 0 {
-		l.state.CachedPosition.Col += l.state.Cursor - l.state.CachedPositionCursor
-		l.state.CachedPositionCursor = l.state.Cursor
-		return l.state.CachedPosition
+		l.state.Position.Col += l.state.Cursor - l.state.PositionCursor
+		l.state.PositionCursor = l.state.Cursor
+		return l.state.Position
 	}
 
 	nextLineStart := l.state.LineIndexes[0]
 	if l.state.Cursor <= nextLineStart {
-		l.state.CachedPosition.Col += l.state.Cursor - l.state.CachedPositionCursor
-		l.state.CachedPositionCursor = l.state.Cursor
-		return l.state.CachedPosition
+		l.state.Position.Col += l.state.Cursor - l.state.PositionCursor
+		l.state.PositionCursor = l.state.Cursor
+		return l.state.Position
 	}
 
-	l.state.CachedPosition.Row += 1
-	l.state.CachedPosition.Col = l.state.Cursor - nextLineStart
-	l.state.CachedPositionCursor = l.state.Cursor
+	l.state.Position.Row += 1
+	l.state.Position.Col = l.state.Cursor - nextLineStart
+	l.state.PositionCursor = l.state.Cursor
 
 	// Remove the consumed entry
 	l.state.LineIndexes = l.state.LineIndexes[1:]
 	l.state.LineIndexesCount -= 1
 
-	return l.state.CachedPosition
+	return l.state.Position
 }
 
 func (l Lexer) GetCurrentLine() (int, int) {
