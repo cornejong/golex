@@ -1,5 +1,8 @@
 # Golex
+[![Go Report Card](https://goreportcard.com/badge/github.com/cornejong/golex)](https://goreportcard.com/report/github.com/cornejong/golex)
+
 A lexing and parsing toolkit for go
+
 
 ## Features
 - **Multiple Tokenizers**: Supports built-in tokenizers for comments, literals, numbers, booleans, strings, and symbols, with the ability to add custom tokenizers.
