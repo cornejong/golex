@@ -1,5 +1,7 @@
 package golex
 
+import "fmt"
+
 var (
 	SlashSingleLineCommentSyntax   = CommentSyntax{Opener: "//"}
 	SlashMultilineCommentSyntax    = CommentSyntax{Opener: "/*", Closer: "*/"}
@@ -30,10 +32,11 @@ func (c CommentTokenizer) CanTokenize(l *Lexer) bool {
 	return false
 }
 
-func (c CommentTokenizer) Tokenize(l *Lexer) Token {
+func (c CommentTokenizer) Tokenize(l *Lexer) (Token, error) {
 	if cachedCommentSyntax == nil {
 		if !c.CanTokenize(l) {
-			return Token{Type: TypeInvalid, Position: l.GetPosition()}
+			return Token{Type: TypeInvalid, Position: l.GetPosition()},
+				NewLexerError(fmt.Sprintf("Invalid token '%c' found", l.CharAtCursor()), l.GetPosition(), l.GetCursor(), l.state.Content)
 		} else {
 			return c.Tokenize(l)
 		}
@@ -64,5 +67,5 @@ func (c CommentTokenizer) Tokenize(l *Lexer) Token {
 		return l.NextToken()
 	}
 
-	return token
+	return token, nil
 }

@@ -33,29 +33,21 @@ func getLexer() *Lexer {
 	)
 }
 
-func TestGolexUsageToSlice(t *testing.T) {
-	fmt.Println("TestGolexUsageToSlice...")
+func TestGolexUsageManual(t *testing.T) {
+	fmt.Println("TestGolexUsageManual...")
 
 	lexer := getLexer()
-	tokens := lexer.TokenizeToSlice(source)
-	differ := &Differ{}
-	differ.Compare(expected, tokens)
-	if differ.HasDifference() {
-		fmt.Println(differ)
-		fmt.Printf("\n%d differences between expected and result\n", len(differ.Diffs))
-		t.FailNow()
-	}
-}
-
-func TestGolexUsageToChannel(t *testing.T) {
-	fmt.Println("TestGolexUsageToChannel...")
-
-	lexer := getLexer()
-	tokensChannel := make(chan Token)
+	lexer.TokenizeManual(source)
 	tokens := []Token{}
-	go lexer.TokenizeToChannel(source, tokensChannel)
 
-	for token := range tokensChannel {
+	var token Token
+	var err error
+	for !lexer.ReachedEOF() {
+		token, err = lexer.NextToken()
+		if err != nil {
+			t.Error(err)
+		}
+
 		tokens = append(tokens, token)
 	}
 
@@ -68,33 +60,18 @@ func TestGolexUsageToChannel(t *testing.T) {
 	}
 }
 
-func TestGolexUsageToCallback(t *testing.T) {
-	fmt.Println("TestGolexUsageToCallback...")
-
-	lexer := getLexer()
-	tokens := []Token{}
-	lexer.TokenizeToCallback(source, func(t Token) {
-		tokens = append(tokens, t)
-	})
-
-	differ := &Differ{}
-	differ.Compare(expected, tokens)
-	if differ.HasDifference() {
-		fmt.Println(differ)
-		fmt.Printf("\n%d differences between expected and result\n", len(differ.Diffs))
-		t.FailNow()
-	}
-}
-
-func TestGolexUsageManual(t *testing.T) {
+func TestGolexUsageIterator(t *testing.T) {
 	fmt.Println("TestGolexUsageManual...")
 
 	lexer := getLexer()
-	lexer.TokenizeManual(source)
 	tokens := []Token{}
 
-	for !lexer.ReachedEOF() {
-		tokens = append(tokens, lexer.NextToken())
+	for token, err := range lexer.Iterate(source) {
+		if err != nil {
+			t.Error(err)
+		}
+
+		tokens = append(tokens, token)
 	}
 
 	differ := &Differ{}
@@ -113,8 +90,12 @@ func TestMultiLinePosition(t *testing.T) {
 	lexer.TokenizeManual("a = true;\nb = false")
 	tokens := []Token{}
 
-	for !lexer.ReachedEOF() {
-		tokens = append(tokens, lexer.NextToken())
+	for token, err := range lexer.Iterate("a = true;\nb = false") {
+		if err != nil {
+			t.Error(err)
+		}
+
+		tokens = append(tokens, token)
 	}
 
 	expect := []Token{
@@ -140,13 +121,16 @@ func TestMultiLinePosition(t *testing.T) {
 func TestRetainWhitespace(t *testing.T) {
 	fmt.Println("TestRetainWhitespace...")
 
+	tokens := []Token{}
 	lexer := getLexer()
 	RetainWhitespace()(lexer)
-	lexer.TokenizeManual("a = true;\nb = false")
-	tokens := []Token{}
 
-	for !lexer.ReachedEOF() {
-		tokens = append(tokens, lexer.NextToken())
+	for token, err := range lexer.Iterate("a = true;\nb = false") {
+		if err != nil {
+			t.Error(err)
+		}
+
+		tokens = append(tokens, token)
 	}
 
 	expect := []Token{
@@ -177,50 +161,21 @@ func TestRetainWhitespace(t *testing.T) {
 func TestTripleBacktickString(t *testing.T) {
 	fmt.Println("TestTripleBacktickString...")
 
+	tokens := []Token{}
 	lexer := getLexer()
 	WithStringEnclosure(TripleBacktickStringEnclosure)(lexer)
 
-	lexer.TokenizeManual("```a string```")
-	tokens := []Token{}
+	for token, err := range lexer.Iterate("```a string```") {
+		if err != nil {
+			t.Error(err)
+		}
 
-	for !lexer.ReachedEOF() {
-		tokens = append(tokens, lexer.NextToken())
+		tokens = append(tokens, token)
 	}
 
 	expect := []Token{
 		{Type: TypeTripleBacktickString, Literal: "```a string```", Value: "a string", Position: Position{Col: 1, Row: 1}},
 		{Type: TypeEof, Literal: string(EOF), Position: Position{Row: 1, Col: 15}},
-	}
-
-	differ := &Differ{}
-	differ.Compare(expect, tokens)
-	if differ.HasDifference() {
-		fmt.Println(differ)
-		fmt.Printf("\n%d differences between expected and result\n", len(differ.Diffs))
-		t.FailNow()
-	}
-}
-
-func TestBooleanTokenizer(t *testing.T) {
-	fmt.Println("TestBooleanTokenizer...")
-
-	lexer := getLexer()
-	lexer.TokenizeManual("a = true; b = false")
-	tokens := []Token{}
-
-	for !lexer.ReachedEOF() {
-		tokens = append(tokens, lexer.NextToken())
-	}
-
-	expect := []Token{
-		{Type: TypeSymbol, Literal: "a", Position: Position{Col: 1, Row: 1}},
-		{Type: TypeAssign, Literal: "=", Position: Position{Col: 3, Row: 1}},
-		{Type: TypeBool, Literal: "true", Value: true, Position: Position{Col: 5, Row: 1}},
-		{Type: TypeSemicolon, Literal: ";", Position: Position{Col: 9, Row: 1}},
-		{Type: TypeSymbol, Literal: "b", Position: Position{Col: 11, Row: 1}},
-		{Type: TypeAssign, Literal: "=", Position: Position{Col: 13, Row: 1}},
-		{Type: TypeBool, Literal: "false", Value: false, Position: Position{Col: 15, Row: 1}},
-		{Type: TypeEof, Literal: string(EOF), Position: Position{Col: 20, Row: 1}},
 	}
 
 	differ := &Differ{}
@@ -266,6 +221,107 @@ func TestLexerLookaheadCache(t *testing.T) {
 
 	if lexer.state.LookaheadCache.count != 0 {
 		t.Errorf("Expected the lookahead cache to contain 0 items. %d items were found.", lexer.state.LookaheadCache.count)
+	}
+}
+
+func TestLexerIterateTokensBetween(t *testing.T) {
+	fmt.Println("TestLexerIterateTokensBetween...")
+	lexer := getLexer()
+
+	for token, err := range lexer.Iterate(source) {
+		if err != nil {
+			t.Error(err)
+		}
+
+		if token.TypeIs(TypeOpenCurly) {
+			iterator, start, end, err := lexer.IterateTokensBetweenCurlyBraces()
+			if err != nil {
+				t.Errorf("UnExpected error from IterateTokensBetween: %s\n", err)
+			}
+
+			tokens := []Token{}
+			for token, err := range iterator {
+				if err != nil {
+					t.Error(err)
+				}
+
+				tokens = append(tokens, token)
+			}
+
+			expect := []Token{
+				{Type: TypeSymbol, Literal: "test", Position: Position{Row: 1, Col: 11}},
+				{Type: TypeAssign, Literal: "=", Position: Position{Row: 1, Col: 16}},
+				{Type: TypeDoubleQuoteString, Literal: "\"SomeStringValue\"", Value: "SomeStringValue", Position: Position{Row: 1, Col: 18}},
+				{Type: TypeSemicolon, Literal: ";", Position: Position{Row: 1, Col: 35}},
+				{Type: TypeSymbol, Literal: "test", Position: Position{Row: 1, Col: 37}},
+				{Type: TypeAssign, Literal: "=", Position: Position{Row: 1, Col: 42}},
+				{Type: TypeFloat, Literal: "1.2", Value: 1.2, Position: Position{Row: 1, Col: 44}},
+				{Type: TypeSemicolon, Literal: ";", Position: Position{Row: 1, Col: 47}},
+				{Type: TypeSymbol, Literal: "test", Position: Position{Row: 1, Col: 49}},
+				{Type: TypeAssign, Literal: "=", Position: Position{Row: 1, Col: 54}},
+				{Type: TypeInteger, Literal: "88", Value: 88, Position: Position{Row: 1, Col: 56}},
+			}
+
+			differ := &Differ{}
+			differ.Compare(expect, tokens)
+			if differ.HasDifference() {
+				fmt.Println(differ)
+				fmt.Printf("\n%d differences between expected and result\n", len(differ.Diffs))
+				t.FailNow()
+			}
+
+			if *start != 10 {
+				t.Errorf("Expected the start to be at 10 but got %d", *start)
+			}
+
+			if *end != 58 {
+				t.Errorf("Expected the end to be at 58 but got %d", *end)
+			}
+
+			return
+		}
+	}
+}
+
+func TestLookaheadIterator(t *testing.T) {
+	fmt.Println("TestLookaheadIterator...")
+
+	lexer := getLexer()
+	lexer.TokenizeManual(source)
+	tokens := []Token{}
+
+	for token := range lexer.LookaheadIterator(3) {
+		tokens = append(tokens, token)
+	}
+
+	expect := []Token{
+		{Type: TypeKeyword, Literal: "func", Position: Position{Row: 1, Col: 2}},
+		{Type: TypeOpenParen, Literal: "(", Position: Position{Row: 1, Col: 6}},
+		{Type: TypeCloseParen, Literal: ")", Position: Position{Row: 1, Col: 7}},
+	}
+
+	differ := &Differ{}
+	differ.Compare(expect, tokens)
+	if differ.HasDifference() {
+		// fmt.Println(differ)
+		fmt.Printf("\n%d differences between expected and result\n", len(differ.Diffs))
+		t.FailNow()
+	}
+
+}
+
+func TestNextTokenSequenceIs(t *testing.T) {
+	fmt.Println("TestNextTokenSequenceIs...")
+
+	lexer := getLexer()
+	lexer.TokenizeManual(source)
+
+	if !lexer.NextTokenSequenceIs(Token{Type: TypeKeyword, Literal: "func"}, Token{Type: TypeOpenParen}) {
+		t.Errorf("Expected sequence to be: Token{Type: TypeKeyword, Literal: \"func\"}, Token{Type: TypeOpenParen}")
+	}
+
+	if !lexer.NextTokenSequenceIs(Token{Type: AnyTokenType, Literal: "func"}, Token{Type: TypeOpenParen}) {
+		t.Errorf("Expected sequence to be: Token{Type: AnyTokenType, Literal: \"func\"}, Token{Type: TypeOpenParen}")
 	}
 }
 

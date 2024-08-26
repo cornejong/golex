@@ -72,6 +72,11 @@ const (
 	TypeNewline        BuildInType = "Newline"
 	TypeCarriageReturn BuildInType = "CarriageReturn"
 	TypeFormFeed       BuildInType = "FormFeed"
+
+	// AnyTokenType represents a wildcard for
+	// token comparison using Token.Is()
+	// and should never be returned by the lexer.
+	AnyTokenType BuildInType = "AnyTokenType"
 )
 
 var buildInLiteralTokens []LiteralToken = []LiteralToken{

@@ -2,7 +2,7 @@ package golex
 
 import (
 	"errors"
-	"fmt"
+	"iter"
 	"slices"
 	"unicode"
 )
@@ -178,43 +178,37 @@ func NewLexer(options ...LexerOptionFunc) *Lexer {
 	return lexer
 }
 
-func (l *Lexer) AddTokenizer(tokenizerType TokenizerType, tokenizer Tokenizer) {
-	l.tokenizers[tokenizerType] = tokenizer
-}
-
 func (l *Lexer) RemoveTokenizer(tokenizerType TokenizerType) {
 	delete(l.tokenizers, tokenizerType)
 }
 
-func (l *Lexer) TokenizeToSlice(content string) []Token {
-	l.state = NewState(content)
-
+func (l *Lexer) TokenizeToSlice(content string) ([]Token, error) {
 	tokens := []Token{}
-	for l.state.CurrentToken.Type != TypeEof {
-		tokens = append(tokens, l.NextToken())
+	for token, err := range l.Iterate(content) {
+		if err != nil {
+			return tokens, err
+		}
+
+		tokens = append(tokens, token)
 	}
 
-	return tokens
-}
-
-func (l *Lexer) TokenizeToChannel(content string, tokens chan Token) {
-	l.state = NewState(content)
-	for l.state.CurrentToken.Type != TypeEof {
-		tokens <- l.NextToken()
-	}
-
-	close(tokens)
-}
-
-func (l *Lexer) TokenizeToCallback(content string, callback func(Token)) {
-	l.state = NewState(content)
-	for l.state.CurrentToken.Type != TypeEof {
-		callback(l.NextToken())
-	}
+	return tokens, nil
 }
 
 func (l *Lexer) TokenizeManual(content string) {
 	l.state = NewState(content)
+}
+
+func (l *Lexer) Iterate(content string) iter.Seq2[Token, error] {
+	l.state = NewState(content)
+
+	return func(yield func(Token, error) bool) {
+		for !l.ReachedEOF() {
+			if !yield(l.NextToken()) {
+				return
+			}
+		}
+	}
 }
 
 func (l *Lexer) SkipWhitespace() {
@@ -223,19 +217,21 @@ func (l *Lexer) SkipWhitespace() {
 	}
 }
 
-func (l *Lexer) Lookahead(count int) Token {
-	if l.state.LookaheadCache.ItemCount() >= count {
-		return l.state.LookaheadCache.GetItem(count - 1)
+// Lookahead returns the token at count offset from the cursor without consuming it
+func (l *Lexer) Lookahead(offset int) Token {
+	if l.state.LookaheadCache.ItemCount() >= offset {
+		return l.state.LookaheadCache.GetItem(offset - 1)
 	}
 
 	state := l.GetState()
 	var token Token
 
-	for i := 0; i < count; i++ {
-		token = l.nextToken()
+	var i int
+	for i = 0; i < offset; i++ {
+		token, _ = l.nextToken()
 		state.LookaheadCache.AddItem(token)
 
-		if token.Is(TypeEof) {
+		if token.TypeIs(TypeEof) {
 			l.SetState(state)
 			return token
 		}
@@ -245,20 +241,36 @@ func (l *Lexer) Lookahead(count int) Token {
 	return token
 }
 
-func (l *Lexer) NextToken() Token {
-	token := l.nextToken()
+// LookaheadIterator returns an iterator that iterates over
+// the count number of tokens without consuming them
+func (l *Lexer) LookaheadIterator(count int) iter.Seq[Token] {
+	l.Lookahead(count)
+
+	return func(yield func(Token) bool) {
+		for i := 0; i < count; i++ {
+			if !yield(l.state.LookaheadCache.tokens[i]) {
+				return
+			}
+		}
+
+		return
+	}
+}
+
+func (l *Lexer) NextToken() (Token, error) {
+	token, err := l.nextToken()
 
 	if l.DebugPrintTokens {
 		token.Dump()
 	}
 
-	return token
+	return token, err
 }
 
-func (l *Lexer) nextToken() Token {
+func (l *Lexer) nextToken() (Token, error) {
 	// check if we have anything in the lookahead cache
 	if l.state.LookaheadCache.ContainsItems() {
-		return l.state.LookaheadCache.PluckItem()
+		return l.state.LookaheadCache.PluckItem(), nil
 	}
 
 	if l.IgnoreWhitespace {
@@ -272,9 +284,10 @@ func (l *Lexer) nextToken() Token {
 			Position: l.GetPosition(),
 		}
 
-		return *l.state.CurrentToken
+		return *l.state.CurrentToken, nil
 	}
 
+	var err error
 	token := Token{
 		Type:     TypeInvalid,
 		Position: l.GetPosition(),
@@ -287,7 +300,7 @@ func (l *Lexer) nextToken() Token {
 		}
 
 		if tokenizer.CanTokenize(l) {
-			token = l.tokenizers[tokenizerType].Tokenize(l)
+			token, err = l.tokenizers[tokenizerType].Tokenize(l)
 			break
 		}
 	}
@@ -295,7 +308,7 @@ func (l *Lexer) nextToken() Token {
 	l.state.CurrentToken = &token
 	l.IncrementCursor(1)
 
-	return token
+	return token, err
 }
 
 func (l *Lexer) GetPosition() Position {
@@ -367,7 +380,7 @@ func (l *Lexer) CharAtPosition(pos int) rune {
 	return l.state.Content[pos]
 }
 
-// NextCharsAre checks if the next chars from the cursor on match the provided chars
+// NextCharsAre checks if the next chars from the cursor on match the provided chars without consuming them
 func (l *Lexer) NextCharsAre(chars []rune) bool {
 	len := len(chars)
 	if len == 0 {
@@ -385,95 +398,6 @@ func (l *Lexer) NextCharsAre(chars []rune) bool {
 	}
 
 	return true
-}
-
-// ---------------------------------------------------------------
-// Parsing Utilities
-// ---------------------------------------------------------------
-
-func (l *Lexer) CollectTokensBetweenParentheses() (Tokens, int, int, error) {
-	return l.CollectTokensBetween(TypeOpenParen, TypeCloseParen)
-}
-
-func (l *Lexer) CollectTokensBetweenCurlyBraces() (Tokens, int, int, error) {
-	return l.CollectTokensBetween(TypeOpenCurly, TypeCloseCurly)
-}
-
-func (l *Lexer) CollectTokensBetween(open TokenType, close TokenType) (Tokens, int, int, error) {
-	tokens := Tokens{}
-	token := *l.state.CurrentToken
-
-	if !token.Is(open) {
-		return tokens, -1, -1, fmt.Errorf("Current token is not of opener type %s", open)
-	}
-
-	start := l.GetCursor()
-	end := start
-	level := 1
-
-	for !token.Is(TypeEof) {
-		end = l.GetCursor()
-		token = l.NextToken()
-
-		if token.Is(TypeEof) {
-			return tokens, start, end, fmt.Errorf("Unexpected EndOfFile")
-		}
-
-		if token.Is(close) {
-			level -= 1
-			if level == 0 {
-				break
-			}
-		}
-
-		if token.Is(open) {
-			level += 1
-		}
-
-		tokens = append(tokens, token)
-	}
-
-	return tokens, start, end, nil
-}
-
-func (l *Lexer) GetTokensDelimited(tokenType TokenType, delimiter TokenType) (Tokens, error) {
-	tokens := Tokens{}
-
-	token := *l.state.CurrentToken
-	for !token.Is(TypeEof) {
-		if !token.Is(tokenType) {
-			return tokens, fmt.Errorf("expected %s but found %s", tokenType, token.Type)
-		}
-
-		tokens = append(tokens, token)
-
-		if !l.Lookahead(1).Is(delimiter) {
-			break
-		}
-
-		token = l.NextToken() // Just consume the delimiter
-		token = l.NextToken()
-	}
-
-	return tokens, nil
-}
-
-func (l *Lexer) GetAnyTokenDelimited(delimiter TokenType) ([]Token, error) {
-	tokens := []Token{}
-
-	token := *l.state.CurrentToken
-	for !token.Is(TypeEof) {
-		tokens = append(tokens, token)
-
-		if !l.Lookahead(1).Is(delimiter) {
-			break
-		}
-
-		token = l.NextToken() // Just consume the delimiter
-		token = l.NextToken()
-	}
-
-	return tokens, nil
 }
 
 // ---------------------------------------------------------------
@@ -509,4 +433,8 @@ func (l *Lexer) CursorIsOutOfBounds() bool {
 
 func (l Lexer) ReachedEOF() bool {
 	return l.state.CurrentToken.Type == TypeEof
+}
+
+func (l Lexer) CurrentToken() Token {
+	return *l.state.CurrentToken
 }

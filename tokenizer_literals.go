@@ -28,18 +28,18 @@ func (t LiteralTokenizer) CanTokenize(l *Lexer) bool {
 	return false
 }
 
-func (t LiteralTokenizer) Tokenize(l *Lexer) Token {
+func (t LiteralTokenizer) Tokenize(l *Lexer) (Token, error) {
 	if cachedLiteralToken != nil {
 		token := *cachedLiteralToken
 		cachedLiteralToken = nil
-		return token
+		return token, nil
 	}
 
 	return Token{
 		Type:     TypeInvalid,
 		Literal:  string(l.CharAtCursor()),
 		Position: l.GetPosition(),
-	}
+	}, nil
 }
 
 // ###################################################

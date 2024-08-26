@@ -16,7 +16,7 @@ const (
 
 type Tokenizer interface {
 	CanTokenize(*Lexer) bool
-	Tokenize(*Lexer) Token
+	Tokenize(*Lexer) (Token, error)
 }
 
 type TokenizerInserter struct {

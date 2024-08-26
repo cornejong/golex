@@ -11,7 +11,7 @@ func (s SymbolTokenizer) CanTokenize(l *Lexer) bool {
 	return strings.Contains(l.SymbolStartCharacterMap, string(l.CharAtCursor()))
 }
 
-func (s SymbolTokenizer) Tokenize(l *Lexer) Token {
+func (s SymbolTokenizer) Tokenize(l *Lexer) (Token, error) {
 	token := Token{Type: TypeSymbol, Position: l.GetPosition()}
 
 	for !l.CursorIsOutOfBounds() {
@@ -30,5 +30,5 @@ func (s SymbolTokenizer) Tokenize(l *Lexer) Token {
 		token.Type = TypeKeyword
 	}
 
-	return token
+	return token, nil
 }

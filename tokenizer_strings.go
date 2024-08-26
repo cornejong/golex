@@ -1,5 +1,7 @@
 package golex
 
+import "fmt"
+
 var (
 	DoubleQuoteStringEnclosure StringEnclosure = StringEnclosure{
 		Type:      TypeDoubleQuoteString,
@@ -35,19 +37,20 @@ func (s StringTokenizer) CanTokenize(l *Lexer) bool {
 	return false
 }
 
-func (s StringTokenizer) Tokenize(l *Lexer) Token {
+func (s StringTokenizer) Tokenize(l *Lexer) (Token, error) {
 	if cachedStringEnclosure == nil {
 		if !s.CanTokenize(l) {
-			return Token{Type: TypeInvalid, Position: l.GetPosition()}
+			return Token{Type: TypeInvalid, Position: l.GetPosition()},
+				NewLexerError(fmt.Sprintf("Invalid character '%c' found", l.CharAtCursor()), l.GetPosition(), l.GetCursor(), l.state.Content)
 		} else {
 			return s.Tokenize(l)
 		}
 	}
 
-	token := cachedStringEnclosure.Tokenize(l)
+	token, err := cachedStringEnclosure.Tokenize(l)
 	cachedStringEnclosure = nil
 
-	return token
+	return token, err
 }
 
 // ###################################################
@@ -60,7 +63,7 @@ type StringEnclosure struct {
 	Escapable bool
 }
 
-func (se StringEnclosure) Tokenize(l *Lexer) Token {
+func (se StringEnclosure) Tokenize(l *Lexer) (Token, error) {
 	if len(se.Enclosure) > 1 {
 		return se.TokenizeNotEscapableMultiChar(l)
 	}
@@ -72,7 +75,7 @@ func (se StringEnclosure) Tokenize(l *Lexer) Token {
 	return se.TokenizeEscapable(l)
 }
 
-func (se StringEnclosure) TokenizeEscapable(l *Lexer) Token {
+func (se StringEnclosure) TokenizeEscapable(l *Lexer) (Token, error) {
 	enclosureChar := []rune(se.Enclosure)[0]
 	token := Token{Type: se.Type, Position: l.GetPosition()}
 	start := l.GetCursor()
@@ -92,16 +95,20 @@ func (se StringEnclosure) TokenizeEscapable(l *Lexer) Token {
 
 		token.AppendChar(l.CharAtCursor())
 		l.IncrementCursor(1)
+
+		if l.CharAtCursor() == EOF {
+			return token, NewLexerError("Unterminated string literal", token.Position, start, l.state.Content)
+		}
 	}
 
 	token.AppendChar(l.CharAtCursor())
 
 	token.Value = l.GetSourceSubsString(start+1, l.GetCursor())
 
-	return token
+	return token, nil
 }
 
-func (se StringEnclosure) TokenizeNotEscapableSingleChar(l *Lexer) Token {
+func (se StringEnclosure) TokenizeNotEscapableSingleChar(l *Lexer) (Token, error) {
 	enclosureChar := []rune(se.Enclosure)[0]
 	token := Token{Type: se.Type, Position: l.GetPosition()}
 	start := l.GetCursor()
@@ -112,15 +119,19 @@ func (se StringEnclosure) TokenizeNotEscapableSingleChar(l *Lexer) Token {
 	for !l.CursorIsOutOfBounds() && l.CharAtCursor() != enclosureChar {
 		token.AppendChar(l.CharAtCursor())
 		l.IncrementCursor(1)
+
+		if l.CharAtCursor() == EOF {
+			return token, NewLexerError("Unterminated string literal", token.Position, start, l.state.Content)
+		}
 	}
 
 	token.AppendChar(l.CharAtCursor())
 	token.Value = l.GetSourceSubsString(start+1, l.GetCursor())
 
-	return token
+	return token, nil
 }
 
-func (se StringEnclosure) TokenizeNotEscapableMultiChar(l *Lexer) Token {
+func (se StringEnclosure) TokenizeNotEscapableMultiChar(l *Lexer) (Token, error) {
 	enclosureLen := len(se.Enclosure)
 	token := Token{Type: se.Type, Position: l.GetPosition()}
 	start := l.GetCursor()
@@ -131,6 +142,10 @@ func (se StringEnclosure) TokenizeNotEscapableMultiChar(l *Lexer) Token {
 	for !l.CursorIsOutOfBounds() && !l.NextCharsAre([]rune(se.Enclosure)) {
 		token.AppendChar(l.CharAtCursor())
 		l.IncrementCursor(1)
+
+		if l.CharAtCursor() == EOF {
+			return token, NewLexerError("Unterminated string literal", token.Position, start, l.state.Content)
+		}
 	}
 
 	token.AppendChar([]rune(se.Enclosure)...)
@@ -138,5 +153,5 @@ func (se StringEnclosure) TokenizeNotEscapableMultiChar(l *Lexer) Token {
 	token.Value = l.GetSourceSubsString(start+enclosureLen, l.GetCursor())
 	l.IncrementCursor(enclosureLen - 1)
 
-	return token
+	return token, nil
 }

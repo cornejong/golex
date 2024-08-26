@@ -71,6 +71,7 @@ func (t *TokenCollection) TokenAtRelativePosition(pos int) Token {
 // It assumes that the offset start contains the opening parenthesis.
 // Nested parenthesis will be contained in the output tokens until
 // the matching closing parenthesis to the start is found.
+// In addition it returns the start and end cursor position for the collected portion
 func (t *TokenCollection) CollectTokensBetweenParentheses() (Tokens, int, int, error) {
 	return t.CollectTokensBetween(TypeOpenParen, TypeCloseParen)
 }
@@ -80,6 +81,7 @@ func (t *TokenCollection) CollectTokensBetweenParentheses() (Tokens, int, int, e
 // It assumes that the offset start contains the opening curly brace.
 // Nested curly braces will be contained in the output tokens until
 // the matching closing curly brace to the start is found.
+// In addition it returns the start and end cursor position for the collected portion
 func (t *TokenCollection) CollectTokensBetweenCurlyBraces() (Tokens, int, int, error) {
 	return t.CollectTokensBetween(TypeOpenCurly, TypeCloseCurly)
 }
@@ -89,11 +91,12 @@ func (t *TokenCollection) CollectTokensBetweenCurlyBraces() (Tokens, int, int, e
 // it assumes that the offset start contains the opening token.
 // Nested openers and closers will be contained in the output
 // tokens until the matching closer is found.
+// In addition it returns the start and end cursor position for the collected portion
 func (t *TokenCollection) CollectTokensBetween(open TokenType, close TokenType) (Tokens, int, int, error) {
 	collected := Tokens{}
 	token := t.TokenAtCursor()
 
-	if !token.Is(open) {
+	if !token.TypeIs(open) {
 		return collected, -1, -1, fmt.Errorf("Token at start offset is not of opener type %s", open)
 	}
 
@@ -101,23 +104,23 @@ func (t *TokenCollection) CollectTokensBetween(open TokenType, close TokenType) 
 	end := start
 	level := 1
 
-	for !token.Is(TypeEof) {
+	for !token.TypeIs(TypeEof) {
 		end = t.cursor
 		t.cursor += 1
 		token = t.tokens[t.cursor]
 
-		if token.Is(TypeEof) {
+		if token.TypeIs(TypeEof) {
 			return collected, start, end, fmt.Errorf("Unexpected EndOfFile")
 		}
 
-		if token.Is(close) {
+		if token.TypeIs(close) {
 			level -= 1
 			if level == 0 {
 				break
 			}
 		}
 
-		if token.Is(open) {
+		if token.TypeIs(open) {
 			level += 1
 		}
 
@@ -131,14 +134,14 @@ func (t *TokenCollection) CollectTokensDelimited(tokenType TokenType, delimiter 
 	tokens := Tokens{}
 
 	token := t.TokenAtCursor()
-	for !token.Is(TypeEof) {
-		if !token.Is(tokenType) {
+	for !token.TypeIs(TypeEof) {
+		if !token.TypeIs(tokenType) {
 			return tokens, fmt.Errorf("expected %s but found %s", tokenType, token.Type)
 		}
 
 		tokens = append(tokens, token)
 
-		if !t.TokenAtRelativePosition(1).Is(delimiter) {
+		if !t.TokenAtRelativePosition(1).TypeIs(delimiter) {
 			break
 		}
 
@@ -153,10 +156,10 @@ func (t *TokenCollection) CollectAnyTokensDelimited(delimiter TokenType) ([]Toke
 	tokens := []Token{}
 
 	token := t.TokenAtCursor()
-	for !token.Is(TypeEof) {
+	for !token.TypeIs(TypeEof) {
 		tokens = append(tokens, token)
 
-		if !t.TokenAtRelativePosition(1).Is(delimiter) {
+		if !t.TokenAtRelativePosition(1).TypeIs(delimiter) {
 			break
 		}
 
@@ -171,10 +174,10 @@ func (t *TokenCollection) CollectTokensUntil(delimiter TokenType) ([]Token, erro
 	tokens := []Token{}
 
 	token := t.TokenAtCursor()
-	for !token.Is(TypeEof) && !token.Is(delimiter) {
+	for !token.TypeIs(TypeEof) && !token.TypeIs(delimiter) {
 		tokens = append(tokens, token)
 
-		if !t.TokenAtRelativePosition(1).Is(delimiter) {
+		if !t.TokenAtRelativePosition(1).TypeIs(delimiter) {
 			break
 		}
 

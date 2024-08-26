@@ -4,7 +4,6 @@ A lexing and parsing toolkit for go
 ## Features
 - **Multiple Tokenizers**: Supports built-in tokenizers for comments, literals, numbers, booleans, strings, and symbols, with the ability to add custom tokenizers.
 - **Flexible Lexer Options**: Configure the lexer with options like retaining whitespace or customizing keyword sets.
-- **Multiple Token Processing Methods**: Tokenize the input as a slice, through channels, callbacks, or manually.
 
 ### WIP
 This package is still a work-in-progress. The lexer is pretty much there but the parsing tools are not completely implemented.
@@ -34,9 +33,13 @@ import (
 func main() {
     source := `func() { test = "SomeStringValue"; test = 1.2; test = 88 }`
     lexer := golex.NewLexer()
-    tokens := lexer.TokenizeToSlice(source)
 
-    for _, token := range tokens {
+    for token, err := range lexer.Iterate(source) {
+        if err != nil {
+            fmt.Println(err)
+            os.Exit(1)
+        }
+
         token.Dump()
     }
 }
@@ -59,39 +62,6 @@ func main() {
 //   1:  56 -> Integer               88                    (88)
 //   1:  59 -> CloseCurlyBracket     }                     (<nil>)
 //   1:  60 -> EndOfFile                                   (<nil>)
-```
-
-### Tokenization Methods
-### **Tokenize to Slice:**: 
-```go
-tokens := lexer.TokenizeToSlice(source)
-```
-
-### **Tokenize to a Channel:**: 
-```go
-tokensChannel := make(chan golex.Token)
-go lexer.TokenizeToChannel(source, tokensChannel)
-
-for token := range tokensChannel {
-    token.Dump()
-}
-```
-
-### **Tokenize to a Callback**
-```go
-lexer.TokenizeToCallback(source, func(token golex.Token) {
-    token.Dump()
-})
-```
-
-### **Manual Tokenization**
-```go
-lexer.TokenizeManual(source)
-
-for !lexer.ReachedEOF() {
-    token := lexer.NextToken()
-    token.Dump()
-}
 ```
 
 ## Lexer Options
@@ -160,3 +130,8 @@ type Token struct {
 All basic token types are build-in and can be unset or extended using the lexer options.
 For a full list of build-in types check [build_in_types.go](build_in_types.go)
 
+
+
+## TODO:
+- [ ] Better lexer errors with positional info
+- [ ] 
